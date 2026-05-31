@@ -125,7 +125,9 @@ class EmailService {
     this.initialize();
 
     const correlationId = this.generateCorrelationId();
-
+    console.log("==== SEND OTP CALLED ====");
+    console.log("transporter exists:", !!this.transporter);
+    console.log("initialized:", this.initialized);
     console.log("\n========== [EMAIL SEND OTP] ==========");
     console.log(`[${correlationId}] START`, {
       to: email,
