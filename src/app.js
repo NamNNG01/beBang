@@ -45,8 +45,7 @@ app.use(
   }),
 );
 
-app.options("*", cors());
-// Custom JSON parser that preserves raw body for webhook signature verification
+app.options(/.*/, cors()); // Custom JSON parser that preserves raw body for webhook signature verification
 app.use(
   express.json({
     verify: (req, res, buf) => {
