@@ -112,19 +112,113 @@ class EmailService {
   }
 
   // =========================
-  // TEMPLATE
+  // TEMPLATE LAYOUT & HELPERS
   // =========================
+  getEmailLayout(title, content) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${title}</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #334155;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed;">
+          <tr>
+            <td align="center" style="padding: 40px 10px 40px 10px; background-color: #f8fafc;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 550px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0;">
+                
+                <!-- HEADER -->
+                <tr>
+                  <td align="center" style="padding: 32px 40px 24px 40px; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);">
+                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                      <tr>
+                        <td align="center">
+                          <span style="font-size: 28px; font-weight: 800; color: #ffffff; letter-spacing: 1.5px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; text-transform: uppercase;">
+                            Bang<span style="color: #6366f1;">AI</span>
+                          </span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="padding-top: 8px;">
+                          <span style="font-size: 13px; color: #94a3b8; letter-spacing: 1px; text-transform: uppercase; font-weight: 500;">Trợ Lý AI Thông Minh</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- CONTENT -->
+                <tr>
+                  <td style="padding: 40px 40px 32px 40px;">
+                    ${content}
+                  </td>
+                </tr>
+
+                <!-- FOOTER -->
+                <tr>
+                  <td align="center" style="padding: 0 40px 40px 40px; background-color: #ffffff;">
+                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 24px;">
+                    <p style="font-size: 12px; color: #64748b; margin: 0; line-height: 1.6;">
+                      Đây là email tự động từ hệ thống BangAI. Vui lòng không phản hồi email này trực tiếp.
+                    </p>
+                    <p style="font-size: 12px; color: #94a3b8; margin: 8px 0 0 0;">
+                      © ${new Date().getFullYear()} BangAI. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+  }
+
   getTemplate(purpose, otp) {
+    const isReset = purpose === "reset_password";
+    const title = isReset ? "Đặt lại mật khẩu" : "Xác minh tài khoản";
+    const desc = isReset 
+      ? "Chúng tôi đã nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn. Vui lòng sử dụng mã OTP dưới đây để hoàn tất:"
+      : "Cảm ơn bạn đã lựa chọn BangAI! Để kích hoạt và xác minh tài khoản của bạn, vui lòng nhập mã xác thực OTP dưới đây:";
+
+    const content = `
+      <table border="0" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+          <td style="font-size: 20px; font-weight: 700; color: #0f172a; padding-bottom: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            ${title}
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size: 15px; line-height: 1.6; color: #475569; padding-bottom: 32px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            ${desc}
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding-bottom: 32px;">
+            <table border="0" cellpadding="0" cellspacing="0" style="background-color: #f1f5f9; border-radius: 12px; border: 1px dashed #cbd5e1;">
+              <tr>
+                <td style="padding: 16px 32px; font-size: 32px; font-weight: 800; color: #4f46e5; letter-spacing: 8px; font-family: 'Courier New', Courier, monospace;">
+                  ${otp}
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size: 13px; line-height: 1.5; color: #64748b; background-color: #f8fafc; border-radius: 8px; padding: 16px; border-left: 4px solid #6366f1; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <strong>Lưu ý bảo mật:</strong> Mã xác thực này có hiệu lực trong vòng 5 phút. Vui lòng KHÔNG chia sẻ mã này với bất kỳ ai để bảo vệ tài khoản của bạn.
+          </td>
+        </tr>
+      </table>
+    `;
+
     return {
-      subject:
-        purpose === "reset_password"
-          ? "Đặt lại mật khẩu - BangAI"
-          : "Xác thực email - BangAI",
-      html: `
-        <h2>${purpose}</h2>
-        <p>OTP của bạn:</p>
-        <h1 style="letter-spacing:5px">${otp}</h1>
-      `,
+      subject: isReset ? "Đặt lại mật khẩu - BangAI" : "Xác thực email - BangAI",
+      html: this.getEmailLayout(title, content),
     };
   }
 
@@ -339,22 +433,62 @@ class EmailService {
     }).format(amount);
 
     const subject = "Xác nhận thanh toán thành công - BangAI";
-    const html = `
-      <h2>Cảm ơn bạn đã thanh toán!</h2>
-      <p>Giao dịch của bạn đã được xác nhận thành công.</p>
-      <ul>
-        <li><strong>Gói dịch vụ:</strong> ${plan}</li>
-        <li><strong>Số tiền:</strong> ${formattedAmount}</li>
-        <li><strong>Mã chuyển khoản:</strong> ${transferCode}</li>
-      </ul>
-      <p>Tài khoản của bạn đã được nâng cấp/cộng credits tương ứng. Chúc bạn có trải nghiệm tuyệt vời cùng BangAI!</p>
+    const title = "Thanh toán thành công";
+
+    let planDisplayName = plan;
+    if (plan === "pro_monthly") planDisplayName = "Gói Pro Hàng Tháng";
+    else if (plan === "pro_yearly") planDisplayName = "Gói Pro Hàng Năm";
+    else if (plan === "credits_50") planDisplayName = "Nạp 50 Credits";
+    else if (plan === "credits_100") planDisplayName = "Nạp 100 Credits";
+
+    const content = `
+      <table border="0" cellpadding="0" cellspacing="0" width="100%">
+        <tr>
+          <td align="center" style="padding-bottom: 24px;">
+            <div style="display: inline-block; width: 64px; height: 64px; line-height: 64px; border-radius: 50%; background-color: #ecfdf5; color: #10b981; font-size: 32px; font-weight: bold; text-align: center; margin-bottom: 16px;">
+              ✓
+            </div>
+            <div style="font-size: 22px; font-weight: 700; color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Thanh toán thành công!</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-size: 15px; line-height: 1.6; color: #475569; padding-bottom: 24px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            Cảm ơn bạn đã tin tưởng dịch vụ của BangAI. Giao dịch của bạn đã được đối soát thành công và hệ thống đã cập nhật quyền lợi tài khoản của bạn.
+          </td>
+        </tr>
+        <tr>
+          <td style="padding-bottom: 32px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden;">
+              <tr>
+                <td style="padding: 16px 20px; font-size: 14px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; width: 40%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Gói dịch vụ</td>
+                <td style="padding: 16px 20px; font-size: 14px; font-weight: 700; color: #0f172a; border-bottom: 1px solid #e2e8f0; text-align: right; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">${planDisplayName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 16px 20px; font-size: 14px; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Số tiền thanh toán</td>
+                <td style="padding: 16px 20px; font-size: 14px; font-weight: 700; color: #10b981; border-bottom: 1px solid #e2e8f0; text-align: right; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">${formattedAmount}</td>
+              </tr>
+              <tr>
+                <td style="padding: 16px 20px; font-size: 14px; font-weight: 600; color: #64748b; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">Mã chuyển khoản</td>
+                <td style="padding: 16px 20px; font-size: 14px; font-weight: 500; color: #334155; text-align: right; font-family: monospace;">${transferCode}</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td align="center" style="padding-bottom: 16px;">
+            <a href="https://fe-rho-lemon.vercel.app" target="_blank" style="display: inline-block; background-color: #4f46e5; color: #ffffff; font-weight: 700; font-size: 15px; text-decoration: none; padding: 14px 32px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+              Bắt đầu trải nghiệm BangAI
+            </a>
+          </td>
+        </tr>
+      </table>
     `;
 
     const msg = {
       from: `"BangAI" <${this.fromEmail}>`,
       to: email,
       subject: subject,
-      html: html,
+      html: this.getEmailLayout(title, content),
       text: `Xác nhận thanh toán gói ${plan} số tiền ${formattedAmount}. Mã giao dịch: ${transferCode}`,
     };
 
