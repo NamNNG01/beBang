@@ -25,12 +25,50 @@ let cachedModel = DEFAULT_MODEL;
 /**
  * Lấy API key từ environment
  */
-function getApiKey() {
-  const key = process.env.GROQ_API_KEY;
+let currentKeyIndex = 0;
 
-  if (!key || !key.trim()) {
-    throw new Error("GROQ_API_KEY không được cấu hình!");
+function getApiKeys() {
+  const keys = [
+    process.env.GROQ_API_KEY_1,
+    process.env.GROQ_API_KEY_2,
+    process.env.GROQ_API_KEY_3,
+    process.env.GROQ_API_KEY_4,
+    process.env.GROQ_API_KEY_5,
+    process.env.GROQ_API_KEY_6,
+  ];
+
+  console.log("=== GROQ KEYS DEBUG ===");
+
+  keys.forEach((key, index) => {
+    console.log(
+      `KEY_${index + 1}:`,
+      key
+        ? `${key.substring(0, 10)}... (${key.length} chars)`
+        : "NOT FOUND"
+    );
+  });
+
+  const validKeys = keys.filter((key) => key?.trim());
+
+  console.log("Valid Keys:", validKeys.length);
+  console.log("======================");
+
+  return validKeys;
+}
+
+function getApiKey() {
+  const keys = getApiKeys();
+
+  if (keys.length === 0) {
+    throw new Error(
+      "Không có GROQ API KEY nào được cấu hình!"
+    );
   }
+
+  const key = keys[currentKeyIndex];
+
+  currentKeyIndex =
+    (currentKeyIndex + 1) % keys.length;
 
   return key.trim();
 }
@@ -93,7 +131,7 @@ function extractFormulaFromText(text) {
  */
 async function listModels() {
   const apiKey = getApiKey();
-  const url = `${GEMINI_BASE_URL}/models?key=${encodeURIComponent(apiKey)}`;
+  const url = `${GROQ_BASE_URL}/models?key=${encodeURIComponent(apiKey)}`;
 
   try {
     const res = await fetch(url);
@@ -124,10 +162,14 @@ async function pickAvailableModel() {
 /**
  * Call Gemini API with retry logic and signal support
  */
-async function callGenerateContent(modelName, payload, options = {}) {
-  const { signal: externalSignal } = options;
 
-  const apiKey = getApiKey();
+
+async function callGenerateContent(modelName, payload, options = {}) {
+    console.log("🔥 CALL GENERATE CONTENT");
+  const sleep = (ms) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
+
+  const { signal: externalSignal } = options;
 
   try {
     const controller = new AbortController();
@@ -148,64 +190,118 @@ async function callGenerateContent(modelName, payload, options = {}) {
       promptText = payload.contents[0].parts[0].text;
     }
 
-    const response = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: modelName,
+    let response;
+    let data;
 
-        messages: [
-          {
-            role: "user",
-            content: promptText,
+    const MAX_RETRIES = getApiKeys().length;
+
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      const apiKey = getApiKey();
+
+      console.log(
+        `Using API Key ${attempt + 1}/${MAX_RETRIES}`
+      );
+
+      response = await fetch(
+        `${GROQ_BASE_URL}/chat/completions`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
           },
-        ],
+          body: JSON.stringify({
+            model: modelName,
+            messages: [
+              {
+                role: "user",
+                content: promptText,
+              },
+            ],
+            temperature: 0.2,
 
-        temperature: 0.2,
+            // Có thể giảm xuống 4096 nếu muốn tiết kiệm quota
+            max_tokens: 8192,
+          }),
+          signal: controller.signal,
+        }
+      );
 
-        max_tokens: 8192,
-      }),
+      data = await response.json();
 
-      signal: controller.signal,
-    });
+      // Thành công
+      if (response.ok) {
+        break;
+      }
+
+      // Nếu key hiện tại bị rate limit thì thử key tiếp theo
+      if (response.status === 429) {
+        console.warn(
+          `Rate limit với API Key ${
+            attempt + 1
+          }/${MAX_RETRIES}`
+        );
+
+        // Chờ 1s rồi đổi key
+        await sleep(1000);
+
+        continue;
+      }
+
+      // Các lỗi khác thì dừng luôn
+      break;
+    }
 
     clearTimeout(timeoutId);
 
-    const data = await response.json();
+    if (!response?.ok) {
+      const errorMsg =
+        data?.error?.message ||
+        `HTTP ${response?.status}`;
 
-    if (!response.ok) {
-      const errorMsg = data?.error?.message || `HTTP ${response.status}`;
-
-      const errorCode = response.status;
+      const errorCode = response?.status;
 
       if (errorCode === 400) {
-        throw new Error(`❌ Request không hợp lệ: ${errorMsg}`);
+        throw new Error(
+          `❌ Request không hợp lệ: ${errorMsg}`
+        );
       }
 
-      if (errorCode === 401 || errorCode === 403) {
-        throw new Error("❌ API Key không hợp lệ!");
+      if (
+        errorCode === 401 ||
+        errorCode === 403
+      ) {
+        throw new Error(
+          "❌ API Key không hợp lệ!"
+        );
       }
 
       if (errorCode === 429) {
-        throw new Error("❌ Quá nhiều requests!");
+        throw new Error(
+          "❌ Tất cả API Keys đều đã bị limit!"
+        );
       }
 
-      throw new Error(`❌ Lỗi API (${errorCode}): ${errorMsg}`);
+      throw new Error(
+        `❌ Lỗi API (${errorCode}): ${errorMsg}`
+      );
     }
 
-    const text = data?.choices?.[0]?.message?.content || "";
+    const text =
+      data?.choices?.[0]?.message?.content || "";
 
     if (!text.trim()) {
-      throw new Error("❌ AI trả về response rỗng!");
+      throw new Error(
+        "❌ AI trả về response rỗng!"
+      );
     }
 
     return { text };
   } catch (error) {
     if (error.name === "AbortError") {
-      throw new Error(`❌ 429 Rate Limit: ${JSON.stringify(data)}`);
+      throw new Error(
+        "❌ Request timeout sau 60 giây"
+      );
     }
 
     throw error;
@@ -1078,9 +1174,8 @@ function formatLightweightContext(context) {
         const cols = table.columns
           ? table.columns.slice(0, 8).join(", ")
           : "unknown";
-        contextText += `  - ${table.name || "Table"}: ${cols}${
-          table.columns && table.columns.length > 8 ? "..." : ""
-        } (${table.rowCount || "?"} rows)\n`;
+        contextText += `  - ${table.name || "Table"}: ${cols}${table.columns && table.columns.length > 8 ? "..." : ""
+          } (${table.rowCount || "?"} rows)\n`;
       });
     }
 

@@ -10,6 +10,11 @@ import { generalLimiter } from "./middlewares/rateLimiter.middleware.js";
 
 const app = express();
 
+console.log("================================");
+console.log("🚀 APP LOADED");
+console.log("PID:", process.pid);
+console.log("TIME:", new Date());
+console.log("================================");
 // Trust proxy - Quan trọng khi chạy trên Railway/Vercel sau load balancer
 app.set("trust proxy", 1);
 
